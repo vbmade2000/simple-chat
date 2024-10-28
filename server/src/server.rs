@@ -139,7 +139,12 @@ impl SimpleChatServer {
                 // println!("- Sending message to user: {:?}", &username);
                 println!("User: {}", &sender_username);
                 println!("data: {}", &data);
-                let usr_msg = format!("<{}> {} {}\n", messages::USER_MSG, sender_username, data);
+                let usr_msg = format!(
+                    "<{}> {} {}\n",
+                    messages::USER_MSG,
+                    sender_username,
+                    data
+                );
                 println!("Sending message: {:?}", &usr_msg);
                 let _ = sender.send(usr_msg).await;
             }
