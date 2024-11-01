@@ -1,7 +1,9 @@
 [workspace]
 resolver = "2"
 
-members = [ "cli-client",
+members = [ 
     "server",
-    "cli-client"
-, "common"]
+    "cli-client",
+    "common",
+    "integration_tests"
+]

@@ -1,3 +1,16 @@
+/*
+    Pending work:
+    1. Appropriate error handling. Remove use of expect/unwrap and return proper error.
+    2. Make functions more testable by using generic types.
+    3. Return proper return code as per Unix standards.
+    4. Make use of logging instead of println.
+    5. Use of struct with serde serialization instead of raw text messages.
+    6. Use of enums instead of constants for cohesiveness.
+    7. Graceful shutdown of the server.
+    8. Handle Ctrl + C signal to stop the server.
+    9. Make functions more granular and make code more reusable.
+*/
+
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
 use common::{extract_parts, messages};
@@ -48,12 +61,6 @@ impl SimpleChatServer {
         }
     }
 
-    /// Stop the server
-    pub fn stop(&self) {
-        println!("Stopping server on {}", self.address);
-    }
-
-    // BufWriter<WriteHalf<'_>>
     // Handles joining of a new user. Returns true/false based on user joining success.
     async fn handle_join_command<T>(
         users: Arc<Mutex<HashMap<String, Sender<String>>>>,
@@ -139,12 +146,7 @@ impl SimpleChatServer {
                 // println!("- Sending message to user: {:?}", &username);
                 println!("User: {}", &sender_username);
                 println!("data: {}", &data);
-                let usr_msg = format!(
-                    "<{}> {} {}\n",
-                    messages::USER_MSG,
-                    sender_username,
-                    data
-                );
+                let usr_msg = format!("<{}> {} {}\n", messages::USER_MSG, sender_username, data);
                 println!("Sending message: {:?}", &usr_msg);
                 let _ = sender.send(usr_msg).await;
             }
@@ -192,11 +194,9 @@ impl SimpleChatServer {
                             }
 
                             if line.trim() == "\n" {
-                                println!("Received new line character. Ignoring.");
+                                // println!("Received new line character. Ignoring.");
                                 continue;
                             }
-
-                            println!("Received network message from {:?}: {:?}", &client_address, &line);
 
                             let (command, username, data) = extract_parts(&line);
 
@@ -212,7 +212,7 @@ impl SimpleChatServer {
                             else if command ==  messages::USER_MSG {
                                 Self::handle_user_messages(users.clone(), &my_username, &mut writer, &mut line, &data, &client_address, &username).await;
                             } else {
-                                println!("Invalid command received: {:?}", &line);
+                                eprintln!("Invalid command received: {:?}", &line);
                                 let _ = writer.write_all(format!("{}", messages::INVALID_CMD).as_bytes()).await;
                                 let _ = writer.flush().await;
                             }
@@ -221,7 +221,7 @@ impl SimpleChatServer {
 
                         }
                         Err(e) => {
-                            println!("ERROR: Failed to read from socket; error={:?}", e);
+                            eprintln!("ERROR: Failed to read from socket; error={:?}", e);
                             break;
                         }
                     }
@@ -229,7 +229,6 @@ impl SimpleChatServer {
                 result = rx.recv() => {
                     match result {
                         Some(msg) => {
-                            println!("Received channel message from other users: {:?}", &msg);
                             // Received message from other user(s). Send it to this user if this user is not the sender.
                             let _ = writer.write_all(msg.as_bytes()).await;
                             let _ = writer.flush().await;
@@ -247,8 +246,6 @@ impl SimpleChatServer {
 
 #[cfg(test)]
 mod tests {
-
-    use tokio::io::{self, AsyncReadExt};
 
     use super::*;
 
@@ -272,6 +269,7 @@ mod tests {
         assert_eq!(users.lock().await.len(), 0);
     }
 
+    // TODO: Solve this or remove this.
     // async fn test_handle_join_command_user_exists() {
     //     // async fn handle_join_command(
     //     //     users: Arc<Mutex<HashMap<String, Sender<String>>>>,
