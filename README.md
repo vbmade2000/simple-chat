@@ -82,4 +82,4 @@ or
 `cargo test`
 
 ## Demo video
-https://github.com/user-attachments/assets/6013f93e-f39b-4a4b-827a-3509386d7950
+https://github.com/user-attachments/assets/a4c163e2-d29b-40ab-97e2-037e86164486

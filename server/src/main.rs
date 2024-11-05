@@ -1,5 +1,6 @@
 use clap::{command, Parser};
 use server::SimpleChatServer;
+use tokio::io;
 
 mod server;
 
@@ -15,11 +16,11 @@ struct Args {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> io::Result<()> {
     let args = Args::parse();
-    let ip = args.ip.unwrap();
-    let port = args.port.unwrap();
 
-    let server = SimpleChatServer::new(format!("{}:{}", ip, port).to_string());
-    server.start().await;
+    let server =
+        SimpleChatServer::new(format!("{}:{}", args.ip.unwrap(), args.port.unwrap()).to_string());
+    server.start().await?;
+    Ok(())
 }

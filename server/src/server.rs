@@ -1,21 +1,8 @@
-/*
-    Pending work:
-    1. Appropriate error handling. Remove use of expect/unwrap and return proper error.
-    2. Make functions more testable by using generic types.
-    3. Return proper return code as per Unix standards.
-    4. Make use of logging instead of println.
-    5. Use of struct with serde serialization instead of raw text messages.
-    6. Use of enums instead of constants for cohesiveness.
-    7. Graceful shutdown of the server.
-    8. Handle Ctrl + C signal to stop the server.
-    9. Make functions more granular and make code more reusable.
-*/
-
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
 use common::{extract_parts, messages};
 use tokio::{
-    io::{AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader, BufWriter},
+    io::{self, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader, BufWriter},
     net::{tcp::WriteHalf, TcpListener, TcpStream},
     sync::{
         mpsc::{channel, Receiver, Sender},
@@ -42,11 +29,10 @@ impl SimpleChatServer {
     }
 
     /// Start the server
-    pub async fn start(&self) {
+    pub async fn start(&self) -> io::Result<()> {
         let address = self.address.clone();
-        let listener = TcpListener::bind(address.to_string())
-            .await
-            .unwrap_or_else(|_| panic!("ERROR: Failed to bind to {}", &self.address));
+        let listener = TcpListener::bind(address.to_string()).await?;
+        // .unwrap_or_else(|_| panic!("ERROR: Failed to bind to {}", &self.address));
 
         println!("Starting server on {}", self.address);
 
@@ -55,10 +41,12 @@ impl SimpleChatServer {
 
             tokio::spawn({
                 async move {
-                    Self::handle_connection(stream, client_address, users).await;
+                    let _ = Self::handle_connection(stream, client_address, users).await;
                 }
             });
         }
+
+        Ok(())
     }
 
     // Handles joining of a new user. Returns true/false based on user joining success.
@@ -157,11 +145,10 @@ impl SimpleChatServer {
         mut stream: TcpStream,
         client_address: SocketAddr,
         users: Arc<Mutex<HashMap<String, Sender<String>>>>,
-    ) {
+    ) -> io::Result<()> {
         println!("Received connection from: {:?}", &client_address);
-        stream
-            .set_nodelay(true)
-            .expect("ERROR: Unable to set TCP_NODELAY");
+        stream.set_nodelay(true)?;
+        // .expect("ERROR: Unable to set TCP_NODELAY");
         let (reader, writer) = stream.split();
         let mut reader = BufReader::new(reader);
         let mut writer = BufWriter::new(writer);
@@ -190,7 +177,7 @@ impl SimpleChatServer {
                             println!("Line received from {:?}: {:?}", &client_address, &line);
                             if n == 0 {
                                 println!("Connection closed by client {:?}", &client_address);
-                                break;
+                                break Ok(());
                             }
 
                             if line.trim() == "\n" {
@@ -222,7 +209,7 @@ impl SimpleChatServer {
                         }
                         Err(e) => {
                             eprintln!("ERROR: Failed to read from socket; error={:?}", e);
-                            break;
+                            break Ok(());
                         }
                     }
                 }
@@ -235,7 +222,7 @@ impl SimpleChatServer {
                         }
                         None => {
                             println!("Channel closed");
-                            break;
+                            break Ok(());
                         }
                     }
                 }

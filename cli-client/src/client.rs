@@ -1,14 +1,3 @@
-/*
-    Pending work:
-    1. Appropriate error handling. Remove use of expect/unwrap and return proper error.
-    2. Make functions more testable by using generic types.
-    3. Return proper return code as per Unix standards.
-    4. Make use of logging instead of println.
-    5. Use of struct with serde serialization instead of raw text messages.
-    6. Use of enums instead of constants for cohesiveness.
-    7. Handle Ctrl + C signal to stop the server.
-*/
-
 use std::io;
 
 use common::{extract_parts, messages};
@@ -24,8 +13,33 @@ pub struct Client {
     pub username: String,
 }
 
-static LEAVE: &str = "leave";
-static SEND: &str = "send";
+// Enum to represent the commands that can be entered by the user
+#[derive(PartialEq)]
+enum ConsoleCommand {
+    Leave,
+    Send,
+    InvalidCommand,
+}
+
+impl From<String> for ConsoleCommand {
+    fn from(str: String) -> Self {
+        match str.as_str() {
+            "leave" => ConsoleCommand::Leave,
+            "send" => ConsoleCommand::Send,
+            _ => ConsoleCommand::InvalidCommand,
+        }
+    }
+}
+
+impl From<&str> for ConsoleCommand {
+    fn from(command_str: &str) -> Self {
+        match command_str.to_lowercase().as_str() {
+            "leave" => ConsoleCommand::Leave,
+            "send" => ConsoleCommand::Send,
+            _ => ConsoleCommand::InvalidCommand,
+        }
+    }
+}
 
 impl Client {
     pub fn new(host: String, port: String, username: String) -> Self {
@@ -89,15 +103,15 @@ impl Client {
                     let user_input = input.split(" ").collect::<Vec<&str>>();
 
                     // Extract command from user input
-                    let command = user_input[0].to_lowercase();
+                    let original_command = user_input[0].to_lowercase();
+                    let command = ConsoleCommand::from(original_command.clone());
 
-
-                    if command == LEAVE {
+                    if command == ConsoleCommand::Leave {
                         writer.write_all(format!("<{}> {}\n", messages::LEAVE_USER, self.username).as_bytes()).await.expect("Unable to write to server");
                         writer.flush().await.expect("Unable to write to server");
                         return Ok(());
-                    } else if command == SEND {
-                        let usr_msg = &input[command.len() + 1..];
+                    } else if command == ConsoleCommand::Send{
+                        let usr_msg = &input[original_command.len() + 1..];
                         let usr_msg = format!("<{}> {} {}\n", messages::USER_MSG, self.username, usr_msg);
                         writer.write_all(usr_msg.as_bytes()).await.expect("Unable to write to server");
                         writer.flush().await.expect("Unable to write to server");
