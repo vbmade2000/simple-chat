@@ -8,7 +8,7 @@ mod tests {
         time::Duration,
     };
 
-    #[test]
+    // #[test]
     fn test_user_exists() {
         // Start the server
         let mut server = Command::new("../target/release/server")

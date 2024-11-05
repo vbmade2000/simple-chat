@@ -1,6 +1,9 @@
+use std::process::exit;
+
 use clap::{command, Parser};
 use server::SimpleChatServer;
-use tokio::io;
+use tracing::subscriber;
+use tracing_subscriber::EnvFilter;
 
 mod server;
 
@@ -16,11 +19,31 @@ struct Args {
 }
 
 #[tokio::main]
-async fn main() -> io::Result<()> {
+async fn main() {
     let args = Args::parse();
 
     let server =
         SimpleChatServer::new(format!("{}:{}", args.ip.unwrap(), args.port.unwrap()).to_string());
-    server.start().await?;
-    Ok(())
+
+    let subscriber = tracing_subscriber::fmt()
+        .with_thread_ids(true)
+        .compact()
+        .with_file(true)
+        .with_line_number(true)
+        .with_target(false)
+        .with_env_filter(EnvFilter::new("info"))
+        .finish();
+
+    // Sets this subscriber as the global default for the duration of the entire program.
+    subscriber::set_global_default(subscriber).expect("Error in setting logging mechanism");
+
+    match server.start().await {
+        Ok(_) => {
+            tracing::info!("Server started successfully");
+        }
+        Err(e) => {
+            tracing::error!("Error starting server: {}", e);
+            exit(1);
+        }
+    }
 }

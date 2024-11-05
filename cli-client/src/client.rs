@@ -67,7 +67,6 @@ impl Client {
             .write_all(format!("<{}> {}\n", messages::JOIN_USER, self.username).as_bytes())
             .await
             .expect("ERROR: Unable to write to server");
-
         writer.flush().await.expect("ERROR: Unable to flush writer");
 
         reader
